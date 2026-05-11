@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>席替えプログラム（セーブデータ方式）</title>
+    <style>
+        body {
+            font-family: sans-serif; margin: 0; padding: 20px;
+            background-color: #f9f9f9;
+        }
+        /* セーブデータ読み込み画面のスタイル */
+        #loadScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #e3f2fd; z-index: 9999; display: flex;
+            flex-direction: column; justify-content: center; align-items: center;
+        }
+        .load-box {
+            background: #fff; padding: 40px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; border: 3px solid #2196F3;
+        }
+        .load-box h2 { margin-top: 0; color: #1976d2; }
+        .load-box p { color: #555; margin-bottom: 20px; }
+        input[type="file"] { font-size: 16px; padding: 10px; cursor: pointer; }
+
+        /* アプリ本体のスタイル */
+        #appContent { display: none; }
+        .top-menu {
+            text-align: center; margin-bottom: 20px; padding: 15px;
+            background-color: #fff; border: 2px solid #ccc;
+            border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap;
+        }
+        .checkbox-group { display: flex; gap: 15px; font-size: 16px; font-weight: bold; flex-wrap: wrap; justify-content: center; align-items: center;}
+        
+        .color-toggles { border-left: 2px solid #ddd; padding-left: 15px; display: flex; gap: 15px; }
+        .bg-blue { background-color: #bbdefb !important; border-color: #1976d2 !important; }
+        .bg-red { background-color: #ffcdd2 !important; border-color: #d32f2f !important; }
+        
+        .flip-toggle { background: #e0f7fa; padding: 4px 10px; border-radius: 5px; border: 1px solid #00bcd4; cursor: pointer; transition: 0.2s;}
+        .flip-toggle:hover { background: #b2ebf2; }
+
+        .main-container { display: flex; justify-content: center; align-items: flex-start; gap: 40px; }
+        .left-panel { text-align: center; }
+        
+        #seatArea { display: flex; flex-direction: column; align-items: center; }
+        
+        .blackboard {
+            display: inline-block; width: 350px; padding: 10px; margin-bottom: 20px;
+            border: 2px solid #333; background-color: #f0f0f0; font-weight: bold; letter-spacing: 5px;
+            transition: 0.3s;
+        }
+        table { margin: 0 auto; border-collapse: separate; border-spacing: 8px; transition: 0.3s;}
+        td {
+            width: 95px; height: 85px; border: 2px solid #333; background-color: #fff;
+            text-align: center; vertical-align: middle; padding: 4px; box-sizing: border-box; border-radius: 4px;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .seat-num { font-size: 15px; color: #555; font-weight: bold; }
+        .seat-name-ja { font-size: 13px; font-weight: bold; color: #111; margin-top: 2px; }
+        .seat-name-en { font-size: 11px; color: #333; margin-top: 2px; line-height: 1.1; word-break: break-word; }
+
+        .right-panel {
+            background-color: #fff; border: 2px solid #ccc; border-radius: 8px;
+            padding: 20px; width: 320px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn {
+            padding: 12px 25px; font-size: 18px; cursor: pointer; border: 2px solid #333;
+            background-color: #4CAF50; color: white; border-radius: 5px; font-weight: bold; margin-top: 15px;
+        }
+        .btn:hover { background-color: #45a049; }
+        .btn-download { background-color: #9C27B0; margin-left: 10px; }
+        .btn-download:hover { background-color: #7B1FA2; }
+        .btn-small { padding: 8px 15px; font-size: 14px; background-color: #2196F3; border: none; color: white; border-radius: 3px; cursor: pointer;}
+        .btn-lang { background-color: #FF9800; border: 2px solid #e68a00; color: white; font-weight: bold;}
+        .btn-clear { background-color: #f44336; margin-top: 10px; width: 100%;}
+        .form-group { margin-bottom: 15px; }
+        select { padding: 5px; font-size: 14px; max-width: 100%; }
+        
+        #ruleList { list-style-type: none; padding: 0; margin: 0; }
+        #ruleList li { 
+            background: #eee; margin-bottom: 5px; padding: 8px 10px; 
+            border-left: 4px solid #2196F3; font-size: 14px; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .delete-btn {
+            color: #d32f2f; cursor: pointer; font-weight: bold; font-size: 16px;
+            padding: 0 5px; border-radius: 3px; transition: 0.2s;
+        }
+        .delete-btn:hover { background-color: #ffcdd2; }
+
+        #exportArea {
+            display: none; margin-top: 25px; padding: 15px;
+            border: 3px dashed #9C27B0; background-color: #fff; border-radius: 10px; text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loadScreen">
+        <div class="load-box">
+            <h2>💾 データを読み込みます</h2>
+            <p>個人情報保護のため、プログラム内に生徒データは入っていません。<br><b>「class_data.json」</b>ファイルを選択して起動してください。</p>
+            <input type="file" id="dataFile" accept=".json">
+        </div>
+    </div>
+
+    <div id="appContent">
+        <div class="top-menu">
+            <button class="btn-small btn-lang" id="btnToggleLang" onclick="toggleUILang()">UIを英語にする / Switch to English</button>
+            <div class="checkbox-group">
+                <label><input type="checkbox" id="chkShowNum" checked onchange="renderSeats()"><span id="lblShowNum">出席番号</span></label>
+                <label><input type="checkbox" id="chkShowJa" checked onchange="renderSeats()"><span id="lblShowJa">日本語</span></label>
+                <label><input type="checkbox" id="chkShowEn" onchange="renderSeats()"><span id="lblShowEn">英語</span></label>
+            </div>
+            <div class="checkbox-group color-toggles">
+                <label style="color: #1976d2;"><input type="checkbox" id="chkIntami" onchange="renderSeats()"><span id="lblIntami">インタミ (青)</span></label>
+                <label style="color: #d32f2f;"><input type="checkbox" id="chkAdv" onchange="renderSeats()"><span id="lblAdv">アドバンスト (赤)</span></label>
+            </div>
